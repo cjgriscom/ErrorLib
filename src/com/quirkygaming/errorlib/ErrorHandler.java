@@ -1,8 +1,12 @@
 package com.quirkygaming.errorlib;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ErrorHandler<T extends Exception> {
 	
@@ -10,6 +14,12 @@ public class ErrorHandler<T extends Exception> {
 	private HashSet<Class<?>> unwrappedExceptions = new HashSet<Class<?>>();
 	private PrintStream log;
 	
+	public static ErrorHandler<Exception> forwardHandled(Logger log, Class<?>... handledExceptions) {
+		return forwardHandled(new PrintStream(new LoggerStream(log, Level.SEVERE)), handledExceptions);
+	}
+	public static ErrorHandler<RuntimeException> logAll(Logger log) {
+		return logAll(new PrintStream(new LoggerStream(log, Level.SEVERE)));
+	}
 	public static ErrorHandler<Exception> forwardHandled(PrintStream log, Class<?>... handledExceptions) {
 		return new ErrorHandler<Exception>(log, false, Exception.class, handledExceptions);
 	}
@@ -57,6 +67,25 @@ public class ErrorHandler<T extends Exception> {
 				StackTraceElement ste = e.getStackTrace()[0];
 				log.println("Caught " + e.getClass().getName() + ": " + e.getMessage() + " at line " + ste.getLineNumber() + " in " + ste.getClassName());
 			}
+		}
+	}
+}
+
+class LoggerStream extends OutputStream {
+	private Level level;
+	private Logger l;
+	private StringBuilder buffer = new StringBuilder();
+	LoggerStream(Logger l, Level level) {
+		this.l = l;
+		this.level = level;
+	}
+	@Override
+	public void write(int b) throws IOException {
+		if (b == '\n') {
+			l.log(level, buffer.toString());
+			buffer = new StringBuilder();
+		} else {
+			buffer.append((char)b);
 		}
 	}
 }
